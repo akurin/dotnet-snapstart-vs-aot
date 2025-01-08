@@ -3,4 +3,4 @@ using System.Text.Json.Serialization;
 namespace LambdaNet8Aot;
 
 [JsonSerializable(typeof(string))]
-public partial class InputJsonSerializerContext : JsonSerializerContext;
+public partial class LambdaJsonSerializerContext : JsonSerializerContext;

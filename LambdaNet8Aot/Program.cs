@@ -4,12 +4,12 @@ using Amazon.Lambda.Serialization.SystemTextJson;
 
 namespace LambdaNet8Aot;
 
-public class EntryPoint
+public static class EntryPoint
 {
     public static async Task Main()
     {
-        await LambdaBootstrapBuilder.Create<string>(Handler,
-                new SourceGeneratorLambdaJsonSerializer<InputJsonSerializerContext>())
+        await LambdaBootstrapBuilder.Create<string, string>(Handler,
+                new SourceGeneratorLambdaJsonSerializer<LambdaJsonSerializerContext>())
             .Build()
             .RunAsync();
     }
