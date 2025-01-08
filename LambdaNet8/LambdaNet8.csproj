@@ -6,6 +6,8 @@
         <Nullable>enable</Nullable>
         <PublishReadyToRun>true</PublishReadyToRun>
         <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+        <!-- Suppress IL3000 error in MsQuicApi..cctor, details: https://github.com/dotnet/runtime/issues/109958 -->
+        <NoWarn>IL3000</NoWarn>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Amazon.Lambda.Core" Version="2.5.0"/>
