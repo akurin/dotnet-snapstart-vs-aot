@@ -33,9 +33,15 @@ public class DotnetSnapstartVsAotStack : Stack
                 { "ApplyOn", "PublishedVersions" }
             });
 
-        new Version_(this, "LambdaNet8FunctionSnapStartVersion", new VersionProps
+        var publishedVersion = new Version_(this, "LambdaNet8FunctionSnapStartVersion", new VersionProps
         {
             Lambda = function
+        });
+
+        new Alias(this, "LambdaNet8FunctionProdAlias", new AliasProps
+        {
+            AliasName = "SnapStart",
+            Version = publishedVersion
         });
 
         new Function(
