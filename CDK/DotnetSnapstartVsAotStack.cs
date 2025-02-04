@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Amazon.CDK;
 using Amazon.CDK.AWS.Lambda;
@@ -10,14 +11,36 @@ public class DotnetSnapstartVsAotStack : Stack
     internal DotnetSnapstartVsAotStack(Construct scope, string id, IStackProps props = null)
         : base(scope, id, props)
     {
-        var function = new Function(
+        var memorySizeString = System.Environment.GetEnvironmentVariable("FUNCTION_MEMORY_SIZE") ??
+                               throw new Exception("The FUNCTION_MEMORY_SIZE environment variable is required.");
+
+        var memorySize = int.Parse(memorySizeString);
+
+        new Function(
             this,
-            "LambdaNet8Function",
+            "Net8Function",
             new FunctionProps
             {
-                FunctionName = $"{Aws.STACK_NAME}-LambdaNet8",
+                FunctionName = $"{Aws.STACK_NAME}-Net8",
                 Runtime = Runtime.DOTNET_8,
-                MemorySize = 1024,
+                MemorySize = memorySize,
+                Timeout = Duration.Seconds(30),
+                Handler = "LambdaNet8::" +
+                          "LambdaNet8.Function::" +
+                          "FunctionHandler",
+                Code = Code.FromAsset("bin/LambdaNet8.zip"),
+                Tracing = Tracing.ACTIVE
+            });
+
+
+        var net8AotFunction = new Function(
+            this,
+            "Net8SnapStartFunction",
+            new FunctionProps
+            {
+                FunctionName = $"{Aws.STACK_NAME}-Net8SnapStart",
+                Runtime = Runtime.DOTNET_8,
+                MemorySize = memorySize,
                 Timeout = Duration.Seconds(30),
                 Handler = "LambdaNet8::" +
                           "LambdaNet8.Function::" +
@@ -27,7 +50,7 @@ public class DotnetSnapstartVsAotStack : Stack
             });
 
         // SnapStart is not yet supported in the CDK
-        ((CfnFunction)function.Node.DefaultChild)!.AddPropertyOverride(
+        ((CfnFunction)net8AotFunction.Node.DefaultChild)!.AddPropertyOverride(
             "SnapStart", new Dictionary<string, object>
             {
                 { "ApplyOn", "PublishedVersions" }
@@ -35,7 +58,7 @@ public class DotnetSnapstartVsAotStack : Stack
 
         var publishedVersion = new Version_(this, "LambdaNet8FunctionSnapStartVersion", new VersionProps
         {
-            Lambda = function
+            Lambda = net8AotFunction
         });
 
         new Alias(this, "LambdaNet8FunctionProdAlias", new AliasProps
@@ -46,12 +69,12 @@ public class DotnetSnapstartVsAotStack : Stack
 
         new Function(
             this,
-            "LambdaNet8AotFunction",
+            "Net8AotFunction",
             new FunctionProps
             {
-                FunctionName = $"{Aws.STACK_NAME}-LambdaNet8Aot",
+                FunctionName = $"{Aws.STACK_NAME}-Net8Aot",
                 Runtime = Runtime.PROVIDED_AL2023,
-                MemorySize = 1024,
+                MemorySize = memorySize,
                 // The Handler property is set to "unused" to avoid the following error:
                 // "Missing required properties for aws-cdk-lib.aws_lambda.FunctionProps: 'handler'"
                 Handler = "unused",

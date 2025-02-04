@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import concurrent.futures
 import logging
+import os
 import re
+import subprocess
 import time
 from datetime import datetime, timezone
 from statistics import median
@@ -24,12 +26,13 @@ logs_client = boto3.client("logs")
 
 # Configuration for Lambda functions to test
 FUNCTIONS: List[Dict[str, str]] = [
-    {"name": "test-DotnetSnapstartVsAotStack-LambdaNet8", "alias": "$LATEST"},
-    {"name": "test-DotnetSnapstartVsAotStack-LambdaNet8", "alias": "SnapStart"},
-    {"name": "test-DotnetSnapstartVsAotStack-LambdaNet8Aot", "alias": "$LATEST"}
+    {"name": "test-DotnetSnapstartVsAotStack-Net8", "alias": "$LATEST"},
+    {"name": "test-DotnetSnapstartVsAotStack-Net8SnapStart", "alias": "SnapStart"},
+    {"name": "test-DotnetSnapstartVsAotStack-Net8Aot", "alias": "$LATEST"}
 ]
 
 CONCURRENCY_FACTOR: int = 10
+MEMORY_SIZES: List[int] = [128, 256, 512, 1024, 2048, 3072]
 LOG_GROUP_PREFIX: str = "/aws/lambda/"
 
 # Precompiled regular expressions for parsing logs
@@ -93,7 +96,7 @@ def parse_logs(log_messages: List[str], pattern: re.Pattern) -> List[Tuple[float
 
     :param log_messages: A list of log message strings.
     :param pattern: A compiled regex pattern to extract metrics.
-    :return: A list of tuples containing extracted metric values.
+    :return: A list of tuples containing the extracted metric values.
     """
     results: List[Tuple[float, float]] = []
     for message in log_messages:
@@ -110,7 +113,7 @@ def parse_logs(log_messages: List[str], pattern: re.Pattern) -> List[Tuple[float
 
 def calculate_statistics(values: List[float]) -> Dict[str, float]:
     """
-    Calculate basic statistics (min, max, average, median) for a list of float values.
+    Calculates basic statistics (min, max, average, median) for a list of float values.
 
     :param values: List of float values.
     :return: A dictionary containing the computed statistics.
@@ -126,10 +129,10 @@ def calculate_statistics(values: List[float]) -> Dict[str, float]:
 
 def process_function(func: Dict[str, str], index: int) -> None:
     """
-    Process a single Lambda function by invoking it, retrieving and parsing its logs,
+    Processes a single Lambda function by invoking it, retrieving and parsing its logs,
     and printing the metrics.
 
-    :param func: Dictionary with function configuration.
+    :param func: Dictionary with the function configuration.
     :param index: The index number for logging purposes.
     """
     function_name = func["name"]
@@ -174,12 +177,31 @@ def process_function(func: Dict[str, str], index: int) -> None:
               f"avg={stats['avg']:.2f}, median={stats['median']}")
 
 
+def deploy_and_test() -> None:
+    """
+    Executes 'cdk deploy' for different memory sizes and then runs the test code.
+    """
+    for memory in MEMORY_SIZES:
+        logger.info(f"Deploying with FUNCTION_MEMORY_SIZE={memory}...")
+        # Copy the current environment variables and update the FUNCTION_MEMORY_SIZE.
+        env = os.environ.copy()
+        env["FUNCTION_MEMORY_SIZE"] = str(memory)
+        try:
+            subprocess.run(["cdk", "deploy", "--require-approval", "never"], check=True, env=env)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"cdk deploy failed for memory size {memory}: {e}")
+            continue
+
+        logger.info(f"Running tests for deployment with FUNCTION_MEMORY_SIZE={memory}...")
+        for index, func in enumerate(FUNCTIONS, start=1):
+            process_function(func, index)
+
+
 def main() -> None:
     """
-    Main function to process all configured Lambda functions.
+    Main function to deploy with different memory sizes and process all configured Lambda functions.
     """
-    for index, func in enumerate(FUNCTIONS, start=1):
-        process_function(func, index)
+    deploy_and_test()
 
 
 if __name__ == "__main__":
