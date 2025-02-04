@@ -31,7 +31,7 @@ FUNCTIONS: List[Dict[str, str]] = [
     {"name": "test-DotnetSnapstartVsAotStack-Net8Aot", "alias": "$LATEST"}
 ]
 
-CONCURRENCY_FACTOR: int = 10
+CONCURRENCY_FACTOR: int = 100
 MEMORY_SIZES: List[int] = [128, 256, 512, 1024, 2048, 3072]
 LOG_GROUP_PREFIX: str = "/aws/lambda/"
 

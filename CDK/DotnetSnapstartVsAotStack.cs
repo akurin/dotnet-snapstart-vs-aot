@@ -58,7 +58,8 @@ public class DotnetSnapstartVsAotStack : Stack
 
         var publishedVersion = new Version_(this, "LambdaNet8FunctionSnapStartVersion", new VersionProps
         {
-            Lambda = net8AotFunction
+            Lambda = net8AotFunction,
+            Description = Guid.NewGuid().ToString() // Force cold start
         });
 
         new Alias(this, "LambdaNet8FunctionProdAlias", new AliasProps
