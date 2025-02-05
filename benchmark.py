@@ -36,8 +36,8 @@ MEMORY_SIZES: List[int] = [128, 256, 512, 1024, 2048, 3072]
 LOG_GROUP_PREFIX: str = "/aws/lambda/"
 
 # Precompiled regular expressions for parsing logs
-RESTORE_RE = re.compile(r".*Duration: ([\d.]+) ms.*Restore Duration: ([\d.]+) ms")
-INIT_RE = re.compile(r"REPORT.*Duration: ([\d.]+) ms.*Init Duration: ([\d.]+) ms")
+RESTORE_RE = re.compile(r".*\tDuration: ([\d.]+) ms.*\tRestore Duration: ([\d.]+) ms")
+INIT_RE = re.compile(r"REPORT.*\tDuration: ([\d.]+) ms.*\tInit Duration: ([\d.]+) ms")
 
 
 def invoke_function_concurrently(function_name: str, alias: str) -> None:
@@ -90,7 +90,7 @@ def get_logs(function_name: str, start_time: datetime) -> List[str]:
     return log_messages
 
 
-def parse_logs(log_messages: List[str], pattern: re.Pattern) -> List[Tuple[float, float]]:
+def parse_logs(log_messages: List[str], pattern: re.Pattern) -> List[Tuple[float, ...]]:
     """
     Parses the provided log messages using the supplied regular expression pattern.
 
@@ -98,7 +98,7 @@ def parse_logs(log_messages: List[str], pattern: re.Pattern) -> List[Tuple[float
     :param pattern: A compiled regex pattern to extract metrics.
     :return: A list of tuples containing the extracted metric values.
     """
-    results: List[Tuple[float, float]] = []
+    results: List[Tuple[float, ...]] = []
     for message in log_messages:
         match = pattern.search(message)
         if match:
@@ -161,20 +161,22 @@ def process_function(func: Dict[str, str], index: int) -> None:
         headers = ["Duration (ms)", "Init Duration (ms)"]
 
     if not parsed_results:
-        logger.error("No cold start logs found")
+        logger.error("No cold start logs found.")
         return
 
     # Print the parsed results in a table.
+    print("\nParsed Results:")
     print(tabulate(parsed_results, headers=headers, tablefmt="github"))
 
     # Calculate and print statistics for each metric column.
+    stats_table = []
     for col_index, header in enumerate(headers):
         column_values = [entry[col_index] for entry in parsed_results]
         stats = calculate_statistics(column_values)
-        logger.info(f"{header}: min={stats['min']}, max={stats['max']}, "
-                    f"avg={stats['avg']:.2f}, median={stats['median']}")
-        print(f"{header}: min={stats['min']}, max={stats['max']}, "
-              f"avg={stats['avg']:.2f}, median={stats['median']}")
+        stats_table.append([header, stats['min'], stats['max'], f"{stats['avg']:.2f}", stats['median']])
+
+    print("\nStatistics:")
+    print(tabulate(stats_table, headers=["Metric", "Min", "Max", "Avg", "Median"], tablefmt="github"))
 
 
 def deploy_and_test() -> None:
